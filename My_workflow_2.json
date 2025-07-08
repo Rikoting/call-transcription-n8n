@@ -1,0 +1,326 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "77c1866d-129c-42cd-9547-c542454d3b02",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1uJLhKYn79zVorSMmmBSD2-cXJyoOlj8My960z2SnYCc",
+          "mode": "list",
+          "cachedResultName": "Transcripts Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uJLhKYn79zVorSMmmBSD2-cXJyoOlj8My960z2SnYCc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uJLhKYn79zVorSMmmBSD2-cXJyoOlj8My960z2SnYCc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{$now}}",
+            "name": "={{$json[\"name\"]}}",
+            "email": "={{$json[\"email\"]}}",
+            "transcript": "={{$json[\"transcript\"]}}",
+            "purposes": "={{$json[\"purposes\"].join(\", \")}}",
+            "priority": "={{$json[\"priority\"]}}",
+            "followup": "={{$json[\"followUp\"]}}",
+            "department": "={{$json[\"department\"]}}",
+            "emailvalid": "={{$json[\"emailValid\"]}}",
+            "actionrequested": "={{$json[\"actionRequested\"].join(\", \")}}"
+          },
+          "matchingColumns": [
+            "Timestamp"
+          ],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "department",
+              "displayName": "department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "emailvalid",
+              "displayName": "emailvalid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "actionrequested",
+              "displayName": "actionrequested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "purposes",
+              "displayName": "purposes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "followup",
+              "displayName": "followup",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "transcript",
+              "displayName": "transcript",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "83b35576-cdd8-4e3f-9eef-39db9f691a5b",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ET6exmyBtM7g41vh",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.assemblyai.com/v2/transcript/{{$json[\"id\"]}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "Bearer 07912d4db58d4dba83ebaae8bdd6f5f8"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "ee6361a8-b4d5-4ee0-9966-0340cb0a55c3",
+      "name": "Check Status"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        0
+      ],
+      "id": "50b87ad7-f434-4d19-a85f-89a85bf3a4a0",
+      "name": "Wait",
+      "webhookId": "6321f6ef-940f-4787-b8e5-82568d245d9f"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.assemblyai.com/v2/transcript",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer 07912d4db58d4dba83ebaae8bdd6f5f8"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"audio_url\": \"https://drive.google.com/uc?export=download&id=1ybwn0BVCfL18s9JzcZc9OV3XZbkD4x80\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "544352a4-e892-42bf-9b55-7220a8a33260",
+      "name": "Submit Audio"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcript = $json[\"text\"] || \"\";\n\n// 1. Smarter name detection\nconst namePatterns = [\n  /my name is ([a-zA-Z\\s]+)/i,\n  /this is ([a-zA-Z\\s]+)/i,\n  /i'?m ([a-zA-Z\\s]+)/i,\n  /it'?s ([a-zA-Z\\s]+)/i,\n  /speaking[, ]*([a-zA-Z\\s]+)/i,\n  /you're speaking with ([a-zA-Z\\s]+)/i,\n  /caller is ([a-zA-Z\\s]+)/i,\n  /([a-zA-Z]+\\s+[a-zA-Z]+) here/i,\n  /^([a-zA-Z]+\\s+[a-zA-Z]+)\\s(is)?\\s?(here|speaking)?/i,\n];\n\nlet fullName = \"Not found\";\nfor (const pattern of namePatterns) {\n  const match = transcript.match(pattern);\n  if (match?.[1]) {\n    fullName = match[1].trim();\n    break;\n  }\n}\n\n// Only keep first + last name (remove department or trailing text)\nconst name = fullName.split(\" from \")[0].trim();\n\n// 2. Department extraction\nconst deptMatch = transcript.match(/from (the )?([a-zA-Z\\s]+) department/i);\nconst department = deptMatch?.[2]?.trim() || \"Not found\";\n\n// 3. Improved email matching with fallback correction\nconst emailRegexes = [\n  /(?:my email is|reach me at|contact me at)\\s+([a-zA-Z0-9.\\-_]+@?[a-zA-Z0-9]+\\.[a-zA-Z]{2,})/i,\n];\n\nlet email = \"Not found\";\nfor (const regex of emailRegexes) {\n  const match = regex.exec(transcript);\n  if (match?.[1]) {\n    if (!match[1].includes(\"@\") && match[1].includes(\"mail.com\")) {\n      email = match[1].replace(\"mail.com\", \"@gmail.com\");\n    } else {\n      email = match[1];\n    }\n    break;\n  }\n}\n\n// 4. Email validity check (basic)\nconst emailValid = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n\n// 5. Purpose matching and cleanup\nconst purposeMatches = [];\nconst purposeRegexes = [\n  /calling (?:to|about|regarding) ([^.]+)/gi,\n  /ask(?:ing)? about ([^.]+)/gi,\n  /i(?:'m| am)? (?:calling|here|reaching out) to (?:talk|ask|check|follow up) about ([^.]+)/gi,\n  /i(?:'m| am)? following up on ([^.]+)/gi,\n  /can you help me with ([^.]+)/gi,\n  /i have a question about ([^.]+)/gi,\n  /also(?:,)? i want to (?:ask|check) about ([^.]+)/gi,\n];\n\nfor (const regex of purposeRegexes) {\n  let match;\n  while ((match = regex.exec(transcript)) !== null) {\n    if (match[0]) {\n      purposeMatches.push(match[0].toLowerCase().trim());\n    }\n  }\n}\n\n// Remove overlapping/near-duplicate purposes\nconst normalizedPurposes = purposeMatches.map(p => p.toLowerCase().trim());\nconst deduplicatedPurposes = [];\nfor (const purpose of normalizedPurposes) {\n  if (!deduplicatedPurposes.some(existing =>\n    existing.includes(purpose) || purpose.includes(existing)\n  )) {\n    deduplicatedPurposes.push(purpose);\n  }\n}\n\n// 6. Priority detection\nconst highPriorityPhrases = [\n  \"urgent\", \"asap\", \"as soon as possible\", \"right away\", \"immediately\", \"very important\"\n];\nlet priority = \"normal\";\nfor (const phrase of highPriorityPhrases) {\n  if (transcript.toLowerCase().includes(phrase)) {\n    priority = \"high\";\n    break;\n  }\n}\n\n// 7. Follow-up detection\nconst followUpPhrases = [\n  \"just following up\", \"following up on\", \"haven’t heard back\", \"wanted to check in\",\n  \"checking in again\", \"any update\", \"reaching out again\"\n];\nlet followUp = false;\nfor (const phrase of followUpPhrases) {\n  if (transcript.toLowerCase().includes(phrase)) {\n    followUp = true;\n    break;\n  }\n}\n\n// 8. Action request detection\nconst actionTypes = {\n  \"status update\": [\"status of\", \"update on\", \"check on my application\"],\n  \"reschedule\": [\"reschedule\", \"move the appointment\", \"change the schedule\"],\n  \"cancel\": [\"cancel the appointment\", \"withdraw\", \"stop the process\"],\n  \"confirmation\": [\"confirm\", \"confirmation\", \"double-check\"],\n  \"documents\": [\"send papers\", \"documents\", \"requirements\", \"submit forms\"],\n};\n\nlet actionRequested = [];\n\nfor (const [label, keywords] of Object.entries(actionTypes)) {\n  if (keywords.some(k => transcript.toLowerCase().includes(k))) {\n    actionRequested.push(label);\n  }\n}\n\n// 9. Final output\nreturn [\n  {\n    json: {\n      name: name,\n      department: department,\n      email: email,\n      emailValid: emailValid,\n      purposes: deduplicatedPurposes.length > 0 ? deduplicatedPurposes : [\"Not found\"],\n      priority: priority,\n      followUp: followUp,\n      actionRequested: actionRequested.length > 0 ? actionRequested : [\"Not found\"],\n      transcript: transcript\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "2baa7c78-961d-4036-adcb-78ff66cf8391",
+      "name": "Extract Caller Info"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Submit Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "Extract Caller Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit Audio": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Caller Info": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4e622fb9-99e3-4322-9faa-128f18218c31",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2090c0f909c941a27910a2878d104506c121b4a24cc145e5500a2f897548862f"
+  },
+  "id": "wyXrJhhR2PC8dLto",
+  "tags": []
+}
