@@ -20,7 +20,7 @@
           "parameters": [
             {
               "name": "authorization",
-              "value": "Bearer 07912d4db58d4dba83ebaae8bdd6f5f8"
+              "value": "Authorization": "Bearer hf_XXX_REMOVED_FOR_PUBLIC"
             },
             {
               "name": "content-type",
