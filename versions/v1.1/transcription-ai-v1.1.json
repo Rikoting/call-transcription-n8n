@@ -1,1 +1,732 @@
-
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "id": "3687ced9-5d8b-433f-bef0-1ee13cba6387",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.assemblyai.com/v2/transcript/{{$json[\"id\"]}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "Bearer 07912d4db58d4dba83ebaae8bdd6f5f8"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        200
+      ],
+      "id": "f91ede00-71d7-4bfc-97d0-03eee39d86b8",
+      "name": "Check Status"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        200
+      ],
+      "id": "3b1ecb23-d596-4c77-8114-c14bfafb8018",
+      "name": "Wait",
+      "webhookId": "6321f6ef-940f-4787-b8e5-82568d245d9f"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.assemblyai.com/v2/transcript",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=\"token\": \"hf_XXX_REMOVED_FOR_PUBLIC\""
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"audio_url\": \"https://drive.google.com/uc?export=download&id=1NDF4bBOnPmNtFN90_l-dO6CRMQoZWVjg\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        200
+      ],
+      "id": "09f6405c-4dbc-4fd1-a4d9-e9089a820bdc",
+      "name": "Submit Audio"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcript = $node[\"Check Status\"].json[\"text\"] || \"\";\n\n// NAME extraction (handles: \"Hi, this is Rafael Dominguez\")\nlet nameMatch = transcript.match(/\\b(?:hi,?\\s+)?(?:my name is|this is|i am)\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)+)/i);\nlet name = nameMatch ? nameMatch[1].trim() : \"Not found\";\n\n// DEPARTMENT extraction\nlet deptMatch = transcript.match(/from the ([a-z\\s]+) department/i);\nlet department = deptMatch ? deptMatch[1].trim().toLowerCase() : \"Not found\";\n\n// EMAIL extraction\nconst emailRegex = /\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/i;\nlet emailMatch = transcript.match(emailRegex);\nlet email = emailMatch ? emailMatch[0] : \"Not found\";\n\n// Smart fallback for 13mail.com → gmail.com\nif (email === \"Not found\") {\n  const smartEmailMatch = transcript.match(/(?:email\\s+is\\s+)?([A-Z][a-z]+)\\s+([A-Z][a-z]+),?\\s*(\\d+)?mail\\.com/i);\n  if (smartEmailMatch) {\n    const user = `${smartEmailMatch[1]}${smartEmailMatch[2]}${smartEmailMatch[3] || \"\"}`.toLowerCase();\n    email = `${user}@gmail.com`;\n  }\n}\n\nconst emailvalid = email.includes(\"@\") && email.includes(\".com\");\n\n// PURPOSE detection\nconst purposeRegex = /\\b(ask(?:ing)?|inquire|status|reschedule|update|apply|application|follow[-\\s]?up|follow(?:ing)?\\s?on|confirm|submission|submit|cancel|appointment|role|position|project|coordinator|job|opening)\\b/gi;\nconst purposes = transcript.match(purposeRegex) || [];\nconst uniquePurposes = [...new Set(purposes.map(p => p.toLowerCase()))];\n\n// ACTION detection\nconst actionKeywords = {\n  \"status update\": [\"status\", \"update\", \"check\", \"inquire\"],\n  \"confirmation\": [\"confirm\", \"confirmation\"],\n  \"reschedule\": [\"reschedule\", \"move\", \"change time\"],\n  \"cancel\": [\"cancel\", \"withdraw\", \"remove\"],\n  \"follow-up\": [\"follow up\", \"following up\", \"check back\", \"following on\", \"checking in\"]\n};\n\nconst actionRequested = [];\nfor (const [action, keywords] of Object.entries(actionKeywords)) {\n  for (const keyword of keywords) {\n    const regex = new RegExp(`\\\\b${keyword}\\\\b`, \"i\");\n    if (regex.test(transcript)) {\n      actionRequested.push(action);\n      break;\n    }\n  }\n}\nconst uniqueActions = [...new Set(actionRequested)];\n\n// FOLLOW-UP detection\nconst followUpPhrases = [\n  \"just following up\",\n  \"wanted to follow up\",\n  \"following up\",\n  \"check back\",\n  \"reaching out again\",\n  \"touching base\",\n  \"wanted to check in\",\n  \"following on\",\n  \"checking in\",\n  \"checking back\",\n  \"hoping to hear back\"\n];\n\nlet followup = false;\nfor (const phrase of followUpPhrases) {\n  const regex = new RegExp(phrase, \"i\");\n  if (regex.test(transcript)) {\n    followup = true;\n    break;\n  }\n}\n\n// TIME-SENSITIVE detection\nconst timePhrases = [\n  \"tomorrow\",\n  \"later today\",\n  \"this week\",\n  \"next week\",\n  \"next month\",\n  \"this month\",\n  \"friday\",\n  \"monday\",\n  \"tuesday\",\n  \"wednesday\",\n  \"thursday\",\n  \"saturday\",\n  \"sunday\",\n  \"as soon as possible\",\n  \"within the week\",\n  \"right away\",\n  \"before the weekend\"\n];\n\nlet timeSensitive = false;\nfor (const phrase of timePhrases) {\n  const regex = new RegExp(`\\\\b${phrase}\\\\b`, \"i\");\n  if (regex.test(transcript)) {\n    timeSensitive = true;\n    break;\n  }\n}\n\n// PRIORITY detection\nconst priorityKeywords = [\n  \"urgent\",\n  \"as soon as possible\",\n  \"immediately\",\n  \"important\",\n  \"high priority\",\n  \"right away\",\n  \"top priority\"\n];\n\nlet priority = \"normal\";\nfor (const phrase of priorityKeywords) {\n  const regex = new RegExp(`\\\\b${phrase}\\\\b`, \"i\");\n  if (regex.test(transcript)) {\n    priority = \"high\";\n    break;\n  }\n}\n\n// Final output — clean field names for Regex sheet\nreturn [{\n  json: {\n    name,\n    department,\n    email,\n    emailvalid,\n    purposes: uniquePurposes.length ? uniquePurposes : [\"Not found\"],\n    actionrequested: uniqueActions.length ? uniqueActions : [\"Not found\"],\n    followup,\n    timeSensitive,\n    priority,\n    transcript\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "951bee59-83a5-4ed5-a425-1fe9cad3e45b",
+      "name": "Extract Caller Info"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-inference.huggingface.co/models/dslim/bert-base-NER",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"inputs\": \"{{$node['Check Status'].json['text']}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        200
+      ],
+      "id": "25d265cb-6746-4108-9969-f0b769bb51d2",
+      "name": "Hugging Face NER"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1IWnL247xvsQZBEzouBgRhpjHZX27MDAI2Ps6ONuXTQY",
+          "mode": "list",
+          "cachedResultName": "Ai Transcript Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IWnL247xvsQZBEzouBgRhpjHZX27MDAI2Ps6ONuXTQY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IWnL247xvsQZBEzouBgRhpjHZX27MDAI2Ps6ONuXTQY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "aiTranscript": "={{$node[\"Check Status\"].json[\"text\"]}}",
+            "aiName": "={{$json[\"aiName\"]}}",
+            "aiDepartment": "={{$json[\"aiDepartment\"]}}",
+            "Timestamp": "={{$now}}",
+            "aiEmail": "={{$json[\"aiEmail\"]}}",
+            "aiPurposes": "={{$json[\"aiPurposes\"].join(\", \")}}",
+            "aiEmailValid": "={{$json[\"aiEmailValid\"]}}",
+            "actionRequested": "={{$json[\"actionRequested\"].join(\", \")}}",
+            "followUp": "=={{ $json[\"finalFollowUp\"] ? 'true' : 'false' }}",
+            "timeSensitive": "={{$json[\"timeSensitive\"]}}",
+            "priority": "={{$json[\"priority\"]}}",
+            "aiSummary": "={{$json[\"aiSummary\"]}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "aiName",
+              "displayName": "aiName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "aiDepartment",
+              "displayName": "aiDepartment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "aiEmail",
+              "displayName": "aiEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "aiEmailValid",
+              "displayName": "aiEmailValid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "aiPurposes",
+              "displayName": "aiPurposes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "actionRequested",
+              "displayName": "actionRequested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "followUp",
+              "displayName": "followUp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timeSensitive",
+              "displayName": "timeSensitive",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "aiSummary",
+              "displayName": "aiSummary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "aiTranscript",
+              "displayName": "aiTranscript",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1980,
+        300
+      ],
+      "id": "28f90317-a7fe-4612-8873-7be245778d9d",
+      "name": "AI Transcript Log Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "sl6JqhR0ADIh0GKo",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1uJLhKYn79zVorSMmmBSD2-cXJyoOlj8My960z2SnYCc",
+          "mode": "list",
+          "cachedResultName": "Transcripts Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uJLhKYn79zVorSMmmBSD2-cXJyoOlj8My960z2SnYCc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uJLhKYn79zVorSMmmBSD2-cXJyoOlj8My960z2SnYCc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{$now}}",
+            "name": "={{$json[\"name\"]}}",
+            "email": "={{$json[\"email\"]}}",
+            "transcript": "={{$json[\"transcript\"]}}",
+            "purposes": "={{$json[\"purposes\"].join(\", \")}}",
+            "priority": "={{$json[\"priority\"]}}",
+            "followup": "={{$json[\"followup\"]}}",
+            "department": "={{$json[\"department\"]}}",
+            "emailvalid": "={{$json[\"emailvalid\"]}}",
+            "actionrequested": "={{$json[\"actionrequested\"].join(\", \")}}"
+          },
+          "matchingColumns": [
+            "Timestamp"
+          ],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "department",
+              "displayName": "department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "emailvalid",
+              "displayName": "emailvalid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "actionrequested",
+              "displayName": "actionrequested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "purposes",
+              "displayName": "purposes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "followup",
+              "displayName": "followup",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "transcript",
+              "displayName": "transcript",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "840311d5-1e13-457a-8299-d39bf9b2f393",
+      "name": "Regex Append Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "sl6JqhR0ADIh0GKo",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const entities = items;\n\nlet nameTokens = [];\nlet departmentTokens = [];\n\nfor (const item of entities) {\n  const entity = item.json;\n  const word = entity.word.startsWith('##')\n    ? entity.word.replace('##', '')\n    : entity.word;\n\n  if (entity.entity_group === 'PER') {\n    nameTokens.push(word);\n  } else if (entity.entity_group === 'ORG') {\n    departmentTokens.push(word);\n  }\n}\n\nconst aiName = nameTokens.join('').replace(/\\s+/g, ' ').trim();\nlet aiDepartment = departmentTokens.join(' ').replace(/\\s+/g, ' ').trim();\n\n// Fallback if NER fails\nconst transcript = $node[\"Check Status\"].json[\"text\"] || \"\";\nconst fallbackDept = transcript.match(/from the ([a-z\\s]+) department/i);\nif (!aiDepartment || aiDepartment === \"Not found\") {\n  if (fallbackDept) {\n    aiDepartment = fallbackDept[1].trim().toLowerCase();\n  }\n}\n\n// EMAIL detection\nconst emailRegex = /\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/i;\nlet emailMatch = transcript.match(emailRegex);\nlet aiEmail = emailMatch ? emailMatch[0] : \"Not found\";\n\n// fallback email rescue\nif (aiEmail === \"Not found\") {\n  const smartEmailMatch = transcript.match(/(?:email\\s+is\\s+)?([A-Z][a-z]+)\\s+([A-Z][a-z]+),?\\s*(\\d+)?mail\\.com/i);\n  if (smartEmailMatch) {\n    const user = `${smartEmailMatch[1]}${smartEmailMatch[2]}${smartEmailMatch[3] || \"\"}`.toLowerCase();\n    aiEmail = `${user}@gmail.com`;\n  }\n}\n\nconst aiEmailValid = aiEmail.includes(\"@\") && aiEmail.includes(\".com\");\n\n// PURPOSE detection\nconst purposeRegex = /\\b(?:asking|inquire|status|reschedule|update|apply|follow[-\\s]?up|confirm|submit|cancel|appointment|role|position)\\b/gi;\nconst purposes = transcript.match(purposeRegex) || [];\nconst uniquePurposes = [...new Set(purposes.map(p => p.toLowerCase()))];\n\n// ACTION detection\nconst actionKeywords = {\n  \"status update\": [\"status\", \"update\", \"check\", \"inquire\"],\n  \"confirmation\": [\"confirm\", \"confirmation\"],\n  \"reschedule\": [\"reschedule\", \"move\", \"change time\"],\n  \"cancel\": [\"cancel\", \"withdraw\", \"remove\"],\n  \"follow-up\": [\"follow up\", \"following up\", \"check back\"]\n};\n\nconst actionRequested = [];\nfor (const [action, keywords] of Object.entries(actionKeywords)) {\n  for (const keyword of keywords) {\n    const regex = new RegExp(`\\\\b${keyword}\\\\b`, \"i\");\n    if (regex.test(transcript)) {\n      actionRequested.push(action);\n      break;\n    }\n  }\n}\nconst uniqueActions = [...new Set(actionRequested)];\n\n// FOLLOW-UP detection\nconst followUpPhrases = [\n  \"just following up\",\n  \"wanted to follow up\",\n  \"following up\",\n  \"check back\",\n  \"reaching out again\",\n  \"touching base\",\n  \"wanted to check in\"\n];\n\nlet followUp = false;\nfor (const phrase of followUpPhrases) {\n  const regex = new RegExp(phrase, \"i\");\n  if (regex.test(transcript)) {\n    followUp = true;\n    break;\n  }\n}\n\n// TIME-SENSITIVE detection ✅\nconst timePhrases = [\n  \"tomorrow\",\n  \"later today\",\n  \"this week\",\n  \"next week\",\n  \"next month\",\n  \"this month\",\n  \"friday\",\n  \"monday\",\n  \"tuesday\",\n  \"wednesday\",\n  \"thursday\",\n  \"saturday\",\n  \"sunday\",\n  \"as soon as possible\",\n  \"within the week\",\n  \"right away\",\n  \"before the weekend\"\n];\n\nlet timeSensitive = false;\nfor (const phrase of timePhrases) {\n  const regex = new RegExp(`\\\\b${phrase}\\\\b`, \"i\");\n  if (regex.test(transcript)) {\n    timeSensitive = true;\n    break;\n  }\n}\n\n// PRIORITY detection\nconst priorityKeywords = [\n  \"urgent\",\n  \"as soon as possible\",\n  \"immediately\",\n  \"important\",\n  \"high priority\",\n  \"right away\",\n  \"top priority\"\n];\n\nlet priority = \"normal\";\nfor (const phrase of priorityKeywords) {\n  const regex = new RegExp(`\\\\b${phrase}\\\\b`, \"i\");\n  if (regex.test(transcript)) {\n    priority = \"high\";\n    break;\n  }\n}\n\nreturn [\n  {\n    json: {\n      aiName: aiName || \"Not found\",\n      aiDepartment: aiDepartment || \"Not found\",\n      aiEmail,\n      aiEmailValid,\n      aiPurposes: uniquePurposes.length ? uniquePurposes : [\"Not found\"],\n      actionRequested: uniqueActions.length ? uniqueActions : [\"Not found\"],\n      followUp,\n      timeSensitive,\n      priority,\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        200
+      ],
+      "id": "233456e2-2b38-4f01-858a-8bcb7c311fe2",
+      "name": "AI Extract Caller Info Code"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-inference.huggingface.co/models/philschmid/bart-large-cnn-samsum",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "inputs",
+              "value": "={{$node[\"Check Status\"].json[\"text\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        400
+      ],
+      "id": "828f4dc1-709c-437f-ae1a-473cb147f3fc",
+      "name": "Hugging Face Summarizer"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6c8d783d-b593-4724-93bb-bea1e989a27f",
+              "name": "aiSummary",
+              "value": "={{ $json.aiSummary }}",
+              "type": "string"
+            },
+            {
+              "id": "a5c383d4-3165-4173-b621-845ffc9a140e",
+              "name": "aiFollowUp",
+              "value": "={{ $json.aiFollowUp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1320,
+        400
+      ],
+      "id": "e34df57d-eb93-474a-8783-b6853e6e924d",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1540,
+        300
+      ],
+      "id": "ad509613-0e15-4ec6-bd86-062231c24ecd",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const summary = $json[\"summary_text\"] || \"\";\n\n// Follow-up detection\nconst followUpPhrases = [\n  \"just following up\",\n  \"wanted to follow up\",\n  \"following up\",\n  \"check back\",\n  \"reaching out again\",\n  \"touching base\",\n  \"wanted to check in\",\n  \"following on\",\n  \"checking in\",\n  \"checking back\",\n  \"hoping to hear back\",\n  \"status update\",\n  \"needs a status update\",\n  \"checking the status\",\n  \"waiting for a response\",\n  \"waiting for update\",\n  \"asked for update\",\n  \"wants an update\",\n  \"inquire\",\n  \"asking for update\"\n];\n\nlet aiFollowUp = false;\nfor (const phrase of followUpPhrases) {\n  const regex = new RegExp(phrase, \"i\");\n  if (regex.test(summary)) {\n    aiFollowUp = true;\n    break;\n  }\n}\n\nreturn [{\n  json: {\n    aiSummary: summary,\n    aiFollowUp: aiFollowUp\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        400
+      ],
+      "id": "bdf2a3a1-01c0-4189-8af2-a00207c56ba1",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "let followUp = $json[\"followUp\"];\nlet aiFollowUp = $json[\"aiFollowUp\"];\n\n// Handle string versions of booleans\nif (typeof aiFollowUp === \"string\") {\n  aiFollowUp = aiFollowUp.toLowerCase() === \"true\";\n}\n\nif (typeof followUp === \"string\") {\n  followUp = followUp.toLowerCase() === \"true\";\n}\n\n// AI takes priority if present\nconst finalFollowUp = typeof aiFollowUp === \"boolean\"\n  ? aiFollowUp\n  : (typeof followUp === \"boolean\" ? followUp : false);\n\nreturn [{\n  json: {\n    ...$json,\n    finalFollowUp\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        300
+      ],
+      "id": "7932ba77-3f8e-4ead-ae5f-beacd98ccd65",
+      "name": "Code1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Submit Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "Extract Caller Info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Hugging Face Summarizer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Hugging Face NER",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit Audio": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Caller Info": {
+      "main": [
+        [
+          {
+            "node": "Regex Append Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hugging Face NER": {
+      "main": [
+        [
+          {
+            "node": "AI Extract Caller Info Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Transcript Log Sheet": {
+      "main": [
+        []
+      ]
+    },
+    "AI Extract Caller Info Code": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hugging Face Summarizer": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "AI Transcript Log Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a7c88cee-2efc-4710-959b-285f390fd1a7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "62c39bdf552bff7845af97d54406ce63938332f1a2eb6ab83d0dea098ce1bafc"
+  },
+  "id": "qbVQMYap8nJoh4Bl",
+  "tags": []
+}
